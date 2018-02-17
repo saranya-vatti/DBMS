@@ -34,14 +34,7 @@ def log_info(string):
 def log_debug(string):
     if(LOGLVL <= LOG_LEVELS["DEBUG"]):
         print(string)
-
-def appendToFile(file, content):
-    try:
-        print("Writing : " + content + " to file")
-        file.write(content.encode('utf8').replace(b'\n',b'\r\n'))
-    except Exception as e:
-        log_error(e, "appendToFile")
-        
+       
 def parseRecipePage(url):
     row=list()
     try:
@@ -76,8 +69,8 @@ response = urllib2.urlopen(req)
 soup = BeautifulSoup(response.read(), "html.parser")
 aArr=soup.find_all("a", href=True)
 try:
-    csvwriter = csv.writer(open(datafile, 'wb'))
-    csvwriter.writerow(['name','chef','prep','cooktime','total','instructions','link','rating','calories'])
+    csvwriter = csv.writer(open(datafile, 'w'))
+    csvwriter.writerow(['name','desc','chef','prep','cooktime','total','instructions','link','rating','num_of_reviews','calories','servings','nutrition'])
 except Exception as e:
     log_error(e, "createFile")
 for aitem in aArr:
@@ -96,8 +89,11 @@ for aitem in aArr:
                     href=rec['href']
                 recipe_set.add(href)
         for url in recipe_set:
-            row=parseRecipePage(url)
-            print("Appending row " + ''.join(row) + " to file")
-            csvwriter.writerow(row)
+            try:
+                row=parseRecipePage(url)
+                csvwriter.writerow(row)
+                print("Successfully added recipe for " + row[0])
+            except Exception as e:
+                log_error(e, "Error while trying to write "+ row + " to file")
 file.close()
     
