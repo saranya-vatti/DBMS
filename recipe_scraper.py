@@ -12,28 +12,11 @@ import urllib
 import shutil
 import csv
 
-datafile = "G:\\Courses\\Spring 18\\DBMS\\Assignments\\data.csv"
-ingredientfile = "G:\\Courses\\Spring 18\\DBMS\\Assignments\\ingr.csv"
-i=0
+datafilename = "G:\\Courses\\Spring 18\\DBMS\\Assignments\\data.csv"
+ingredientfilename = "G:\\Courses\\Spring 18\\DBMS\\Assignments\\ingr.csv"
 sitemapurl="http://dish.allrecipes.com/faq-sitemap/"
-req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
-response = urllib2.urlopen(req)
-soup = BeautifulSoup(response.read(), "html.parser")
-aArr=soup.find_all("a", href=True)
 ingrDict=dict()
 ingrCounter=0
-try:
-    csvwriter = csv.writer(open(datafile, 'w'), delimiter=',')
-    csvwriter.writerow(['name','desc','chef','prepTime','cooktime','total','ingredients','instructions','link','rating','num_of_reviews','calories','servings','fat','carb','protein','cholesterol','sodium'])
-except Exception as e:
-    log_error(e, "Error in creating datafile")
-
-try:
-    csvwriter2 = csv.writer(open(ingredientfile, 'w'), delimiter=',')
-    csvwriter2.writerow(['id','name'])
-except Exception as e:
-    log_error(e, "Error in creating ingredientfile")
-
 LOG_LEVELS = {
     "DEBUG" : 100,
     "INFO" : 200,
@@ -54,6 +37,50 @@ def log_info(string):
 def log_debug(string):
     if(LOGLVL <= LOG_LEVELS["DEBUG"]):
         print(string)
+
+try:
+    datafile=open(datafilename, 'w', newline='')
+    csvwriter = csv.writer(datafile)
+    csvwriter.writerow(['name','desc','chef','prepTime','cooktime','total','ingredients','instructions','link','rating','num_of_reviews','calories','servings','fat','carb','protein','cholesterol','sodium'])
+except Exception as e:
+    log_error(e, "Error in creating datafile")
+
+try:
+    ingredientfile=open(ingredientfilename, 'w', newline='')
+    csvwriter2 = csv.writer(ingredientfile)
+    csvwriter2.writerow(['id','name'])
+except Exception as e:
+    log_error(e, "Error in creating ingredientfile")
+
+def main():
+    req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
+    response = urllib2.urlopen(req)
+    soup = BeautifulSoup(response.read(), "html.parser")
+    aArr=soup.find_all("a", href=True)
+
+    for aitem in aArr:
+        href=aitem['href']
+        if(href.startswith("http://allrecipes.com/recipes/")):
+            req = urllib2.Request(href, headers={"User-Agent" : "Magic Browser"})
+            response = urllib2.urlopen(req)
+            soup = BeautifulSoup(response.read(), "html.parser")
+            recipeArr=soup.select("#fixedGridSection a[href]")
+            recipe_set=set()
+            for rec in recipeArr:
+                if "/recipe/" in rec['href']:
+                    if rec['href'].startswith("/"):
+                        href="http://allrecipes.com" + rec['href']
+                    else:
+                        href=rec['href']
+                    recipe_set.add(href)
+            for url in recipe_set:
+                try:
+                    row=parseRecipePage(url)
+                    csvwriter.writerow(row)
+                    print("Successfully added recipe for " + row[0])
+                except Exception as e:
+                    log_error(e, "Error while trying to write "+ row + " to file")
+    cleanup()
        
 def parseRecipePage(url):
     row=list()
@@ -80,20 +107,23 @@ def parseRecipePage(url):
         total=soup.select("time[itemprop='totalTime']")[0].get_text()
         row.append(total)
 
-        ingrElemArr=soup.find_all(class_="recipe-ingred_txt")
+        ingrElemArr=soup.find_all(class_="checkList__item")
         global ingrCounter
         global csvwriter2
         global ingrDict
         ingredients=list()
         for ingrElem in ingrElemArr:
             try:
-                ingr=ingrElem.get_text().strip()
+                ingr=ingrElem.text.strip()
                 if "Add all ingredients to list" not in ingr:
                     if ingr and ingr not in ingrDict:
+                        tmplist=list()
                         ingrCounter+=1
-                        ingrDict.update({ingr:ingrCounter})
-                        ingredients.append(ingrDict[ingr])
-                        csvwriter2.writerow([ingrDict[ingr],ingr])
+                        ingrDict.update({ingr:ingrCounter}) # maintain a dict to make sure ingr are unique across multiple recipes
+                        ingredients.append(ingrDict[ingr]) # maintain a list to add comma deparated values to the recipe's "ingredients" column
+                        tmplist.append(ingrCounter) # maintain a list to add to the next row in the ingredients csv file
+                        tmplist.append(ingr)
+                        csvwriter2.writerow(tmplist)
             except Exception as e:
                 log_error(e, "Error trying to parse ingredient: " + ingr)
         row.append(','.join(str(x) for x in ingredients))
@@ -135,28 +165,14 @@ def parseRecipePage(url):
         log_error(e, "parseRecipePage: " + url)
     return row
 
-for aitem in aArr:
-    href=aitem['href']
-    if(href.startswith("http://allrecipes.com/recipes/")):
-        req = urllib2.Request(href, headers={"User-Agent" : "Magic Browser"})
-        response = urllib2.urlopen(req)
-        soup = BeautifulSoup(response.read(), "html.parser")
-        recipeArr=soup.select("#fixedGridSection a[href]")
-        recipe_set=set()
-        for rec in recipeArr:
-            if "/recipe/" in rec['href']:
-                if rec['href'].startswith("/"):
-                    href="http://allrecipes.com" + rec['href']
-                else:
-                    href=rec['href']
-                recipe_set.add(href)
-        for url in recipe_set:
-            try:
-                row=parseRecipePage(url)
-                csvwriter.writerow(row)
-                print("Successfully added recipe for " + row[0])
-            except Exception as e:
-                log_error(e, "Error while trying to write "+ row + " to file")
-csvwriter.close()
-csvwriter2.close()
+def cleanup():
+    global datafile
+    global ingredientfile
+    datafile.close()
+    ingredientfile.close()
     
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        cleanup()
