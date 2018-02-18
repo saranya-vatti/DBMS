@@ -16,7 +16,7 @@ datafilename = "G:\\Courses\\Spring 18\\DBMS\\Assignments\\data.csv"
 ingredientfilename = "G:\\Courses\\Spring 18\\DBMS\\Assignments\\ingr.csv"
 sitemapurl="http://dish.allrecipes.com/faq-sitemap/"
 ingrDict=dict()
-ingrCounter=0
+ingrCounter=1000
 LOG_LEVELS = {
     "DEBUG" : 100,
     "INFO" : 200,
@@ -128,7 +128,7 @@ def parseRecipePage(url):
                         csvwriter2.writerow(tmplist)
             except Exception as e:
                 log_error(e, "Error trying to parse ingredient: " + ingr)
-        row.append(','.join(str(x) for x in ingredients))
+        row.append(', '.join(str(x) for x in ingredients))
         
         instructions=soup.select("[itemprop='recipeInstructions']")[0].get_text().strip()
         row.append(instructions)
