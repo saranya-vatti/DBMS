@@ -41,7 +41,7 @@ def log_debug(string):
 try:
     datafile=open(datafilename, 'w', newline='')
     csvwriter = csv.writer(datafile)
-    csvwriter.writerow(['name','desc','chef','prepTime','cooktime','total','ingredients','instructions','link','rating','num_of_reviews','calories','servings','fat','carb','protein','cholesterol','sodium'])
+    csvwriter.writerow(['name','link','desc','chef','prepTime','cooktime','total','ingredients','instructions','rating','num_of_reviews','calories','servings','fat','carb','protein','cholesterol','sodium'])
 except Exception as e:
     log_error(e, "Error in creating datafile")
 
@@ -92,6 +92,8 @@ def parseRecipePage(url):
         name=soup.find_all(class_="recipe-summary__h1")[0].get_text()
         row.append(name)
 
+        row.append(url)
+
         desc=soup.find_all(class_="submitter__description")[0].get_text()
         row.append(desc.replace("\"\"", "\"").strip())
 
@@ -107,14 +109,14 @@ def parseRecipePage(url):
         total=soup.select("time[itemprop='totalTime']")[0].get_text()
         row.append(total)
 
-        ingrElemArr=soup.find_all(class_="checkList__item")
+        ingrElemArr=soup.find_all(class_="recipe-ingred_txt")
         global ingrCounter
         global csvwriter2
         global ingrDict
         ingredients=list()
         for ingrElem in ingrElemArr:
             try:
-                ingr=ingrElem.text.strip()
+                ingr=ingrElem.get_text().strip()
                 if "Add all ingredients to list" not in ingr:
                     if ingr and ingr not in ingrDict:
                         tmplist=list()
@@ -131,8 +133,6 @@ def parseRecipePage(url):
         instructions=soup.select("[itemprop='recipeInstructions']")[0].get_text().strip()
         row.append(instructions)
 
-        row.append(url)
-
         rating=soup.select("[class='rating-stars']")[0]['data-ratingstars']
         row.append(rating)
 
@@ -142,10 +142,8 @@ def parseRecipePage(url):
         calories=soup.find_all(class_="calorie-count")[0].get_text()
         row.append(calories.replace(" cals", ""))
 
-        ### WHY THE HELL IS THIS NOT WORKING
-        servings=soup.find_all(class_="servings-count")[0].get_text().replace(" servings", "").strip()
+        servings=soup.find_all(class_="subtext")[0].get_text().replace("Original recipe yields ","")
         row.append(servings)
-        ### ???
 
         fatContent=soup.select("span[itemprop='fatContent']")[0].get_text()
         row.append(fatContent)
