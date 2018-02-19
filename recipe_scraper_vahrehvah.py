@@ -23,7 +23,7 @@ LOG_LEVELS = {
     "ERROR" : 300,
     "NONE" : 400
 }
-LOGLVL=LOG_LEVELS["ERROR"]
+LOGLVL=LOG_LEVELS["DEBUG"]
 
 def log_error(exception, location):
     if(LOGLVL <= LOG_LEVELS["ERROR"]):
@@ -73,12 +73,13 @@ def main():
     req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
     response = urllib2.urlopen(req)
     soup = BeautifulSoup(response.read(), "html.parser")
-    aArr=soup.find_all("a", href=True)
+    #aArr=soup.find_all("a", href=True)
 
-    for aitem in aArr:
-        href=aitem['href']
-        if(href.startswith("https://www.vahrehvah.com/")):
-            parseRecipePage(url)
+    #for aitem in aArr:
+        #href=aitem['href']
+        #if(href.startswith("https://www.vahrehvah.com/")):
+            #parseRecipePage(url)
+    parseRecipePage("https://www.vahrehvah.com/maddur-vada-air-fryer")
     cleanup()
        
 def parseRecipePage(url):
@@ -91,50 +92,63 @@ def parseRecipePage(url):
         name=soup.select("h3[class='non-printable']")[0].get_text()
         if name in recipeSet:
             return
+        log_debug("Name = " + name)
         row.append(name)
 
         row.append(url)
 
         try:
-            desc=soup.find_all(class_="preparation_p2")[0].get_text()
-            row.append(desc.replace("\"\"", "\"").strip())
+            desc=soup.find_all(class_="preparation_p2")[0].get_text().replace("\"\"", "\"").strip().replace("\r","").replace("\n\n","\n").replace("\t"," ").replace("  "," ")
+            log_debug("desc = " + desc)
+            row.append(desc)
         except Exception as e:
             log_error(e, "No description for " + url)
             row.append("NULL")
 
-        chef="Vahchef"
-        row.append(chef)
-
         try:
-            prepTime=soup.select("td")[2].get_text().strip().replace("Prep time","")
+            pElemArr = soup.select("div[class='col-md-6 col-lg-6 col-sm-6 col-xs-6'] p")
+            for pElem in pElemArr:
+                text = pElem.get_text().strip()
+                if text.startswith("Prep time : "):
+                    prepTime = text.replace("Prep time :","").strip()
+                    row.append(prepTime)
+                elif text.startswith("Cook time :"):
+                    cookTime = text.replace("Cook time :","").strip()
+                    row.append(cookTime)
+                elif text.startswith("Total time :"):
+                    totalTime = text.replace("Total time :","").strip()
+                    row.append(totalTime)
+                elif text.startswith("Author :"):
+                    chef=text.replace("Author :","").strip()
+                    row.append(chef)
+        except Exception as e:
+            log_error(e, "Error getting prepTime, cookTime, totalTime, chef for " + url)
+
+        if chef:
+            row.append(chef)
+            log_debug("chef = " + chef)
+        if prepTime:
             row.append(prepTime)
-        except Exception as e:
-            log_error(e, "No prepTime for " + url)
-            row.append("NULL")
-
-        try:
-            cookTime=soup.select("td")[3].get_text().strip().replace("Cook time","")
+            log_debug("prepTime = " + prepTime)
+        if cookTime:
             row.append(cookTime)
-        except Exception as e:
-            log_error(e, "No cookTime for " + url)
-            row.append("NULL")
-
-        try:    
-            total=soup.select("td")[4].get_text().strip().replace("Total time","")
+            log_debug("cookTime = " + cookTime)
+        if totalTime:
             row.append(totalTime)
-        except Exception as e:
-            log_error(e, "No totalTime for " + url)
-            row.append("NULL")
+            log_debug("totalTime = " + totalTime)
 
-        ingrElemArr=soup.select("span[itemprop='ingredients']")
+        ingrElemArr=soup.select("td")
         global ingrCounter
         global csvwriter2
         global ingrDict
         ingredients=list()
         for ingrElem in ingrElemArr:
             try:
-                ingr=ingrElem.get_text().strip()
-                if "Add all ingredients to list" not in ingr:
+                ingr=ingrElem.get_text()
+                if ingr.startswith("• "):
+                    ingr=ingr.replace("• ","")
+                    if ingr.endswith("."):
+                        ingr=ingr[:-1]
                     if ingr:
                         if ingr not in ingrDict:
                             ingrCounter+=1
@@ -142,84 +156,74 @@ def parseRecipePage(url):
                             tmplist=list()
                             tmplist.append(ingrCounter) # maintain a list to add to the next row in the ingredients csv file
                             tmplist.append(ingr)
-                            csvwriter2.writerow(tmplist) # write to the next row in the ingredients csv file
+                            #csvwriter2.writerow(tmplist) # write to the next row in the ingredients csv file
                         ingredients.append(ingrDict[ingr]) # maintain a list to add comma separated values to the recipe's "ingredients" column
+                        log_debug("Mapping is : " + ingr + ", " + ingrDict[ingr])
             except Exception as e:
                 log_error(e, "Error trying to parse ingredient: " + ingr)
-        row.append(', '.join(str(x) for x in ingredients))
+        ingredientsString = ', '.join(str(x) for x in ingredients)
+        log_debug("ingredients = " + ingredientsString)
+        row.append(ingredientsString)
         
-        instructions=soup.select("[itemprop='recipeInstructions']")[0].get_text().strip()
+        instructions=soup.select("script[type='application/ld+json']")[0].get_text()
+        data=json.loads(json_text)
+        log_debug("instructions = " + instructions)
         row.append(instructions)
 
         try:
-            rating=soup.select("[class='rating-stars']")[0]['data-ratingstars']
+            rating=5 - len(soup.select("[class='glyphicon glyphicon-star-empty']"))
+            log_debug("rating = " + rating)
             row.append(rating)
         except Exception as e:
             log_error(e, "No rating for " + url)
             row.append("NULL")
 
         try:             
-            num_of_reviews=soup.find_all(class_="review-count")[0].get_text()
-            row.append(num_of_reviews.replace(" reviews", ""))
+            num_of_reviews=soup.find("span", id="liveratng").get_text().strip()
+            log_debug("num_of_reviews = " + num_of_reviews)
+            row.append(num_of_reviews)
         except Exception as e:
             log_error(e, "No num_of_reviews for " + url)
             row.append("NULL")
 
         try:  
-            calories=soup.find_all(class_="calorie-count")[0].get_text()
-            row.append(calories.replace(" cals", ""))
+            calories=soup.select("[class='glyphicon glyphicon-stats']").get_text().strip().replace(" Cals", "")
+            log_debug("calories = " + calories)
+            row.append(calories)
         except Exception as e:
             log_error(e, "No calories for " + url)
             row.append("NULL")
 
         try:
-            servings=soup.find_all(class_="subtext")[0].get_text().replace("Original recipe yields ","")
+            servings=soup.select("[class='glyphicon glyphicon-star-empty']").get_text().strip()
+            log_debug("servings = " + servings)
             row.append(servings)
         except Exception as e:
             log_error(e, "No servings for " + url)
             row.append("NULL")
 
-        try:
-            fatContent=soup.select("span[itemprop='fatContent']")[0].get_text()
-            row.append(fatContent)
-        except Exception as e:
-            log_error(e, "No fatContent for " + url)
-            row.append("NULL")
+        fatContent="NULL"
+        row.append(fatContent)
 
-        try:
-            carbohydrateContent=soup.select("span[itemprop='carbohydrateContent']")[0].get_text()
-            row.append(carbohydrateContent)
-        except Exception as e:
-            log_error(e, "No carbohydrateContent for " + url)
-            row.append("NULL")
+        carbohydrateContent="NULL"
+        row.append(carbohydrateContent)
 
-        try:
-            proteinContent=soup.select("span[itemprop='proteinContent']")[0].get_text()
-            row.append(proteinContent)
-        except Exception as e:
-            log_error(e, "No proteinContent for " + url)
-            row.append("NULL")
+        proteinContent="NULL"
+        row.append(proteinContent)
 
-        try:
-            cholesterolContent=soup.select("span[itemprop='cholesterolContent']")[0].get_text()
-            row.append(cholesterolContent)
-        except Exception as e:
-            log_error(e, "No cholesterolContent for " + url)
-            row.append("NULL")
+        cholesterolContent="NULL"
+        row.append(cholesterolContent)
 
-        try:
-            sodiumContent=soup.select("span[itemprop='sodiumContent']")[0].get_text()
-            row.append(sodiumContent)
-        except Exception as e:
-            log_error(e, "No sodiumContent for " + url)
-            row.append("NULL")
+        sodiumContent="NULL"
+        row.append(sodiumContent)
             
     except Exception as e:
         log_error(e, "parseRecipePage: " + url)
     global csvwriter
 
     try:
-        csvwriter.writerow(row)
+        #csvwriter.writerow(row)
+        print(row)
         print("Successfully added recipe for " + name)
     except Exception as e:
         log_error(e, "Error while trying to write "+ row + " to file")
