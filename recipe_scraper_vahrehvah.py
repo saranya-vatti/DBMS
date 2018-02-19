@@ -23,7 +23,7 @@ LOG_LEVELS = {
     "ERROR" : 300,
     "NONE" : 400
 }
-LOGLVL=LOG_LEVELS["DEBUG"]
+LOGLVL=LOG_LEVELS["ERROR"]
 
 def log_error(exception, location):
     if(LOGLVL <= LOG_LEVELS["ERROR"]):
@@ -73,13 +73,13 @@ def main():
     req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
     response = urllib2.urlopen(req)
     soup = BeautifulSoup(response.read(), "html.parser")
-    #aArr=soup.find_all("a", href=True)
+    aArr=soup.find(class_="glossaryiteams").find_all("a", href=True)
 
-    #for aitem in aArr:
-        #href=aitem['href']
-        #if(href.startswith("https://www.vahrehvah.com/")):
-            #parseRecipePage(url)
-    parseRecipePage("https://www.vahrehvah.com/maddur-vada-air-fryer")
+    for aitem in aArr:
+        href=aitem['href']
+        log_debug(href)
+        parseRecipePage(href)
+    #parseRecipePage("https://www.vahrehvah.com/maddur-vada-air-fryer")
     cleanup()
        
 def parseRecipePage(url):
@@ -88,8 +88,24 @@ def parseRecipePage(url):
         req = urllib2.Request(url, headers={"User-Agent" : "Magic Browser"})
         response = urllib2.urlopen(req)
         soup = BeautifulSoup(response.read(), "html.parser")
+
+        json_text=soup.select("script[type='application/ld+json']")[0].get_text()
+        data=json.loads(json_text)
+        name = data['name']
+        chef = data['author']['name']
+        image = data['image']
+        desc = data['description']
+        rating = data['aggregateRating']['ratingValue']
+        num_of_reviews = data['aggregateRating']['ratingCount']
+        servings = data['recipeYield']
+        calories = data['nutrition']['calories']
+        fatContent = data['nutrition']['fatContent']
+        proteinContent = data['nutrition']['proteinContent']
+        cholesterolContent = data['nutrition']['cholesterolContent']
+        sodiumContent = data['nutrition']['sodiumContent']
+        #ingredients = data.recipeIngredient
+        instructions = data['recipeInstructions'].replace("\r\n\r\n","").strip()
         
-        name=soup.select("h3[class='non-printable']")[0].get_text()
         if name in recipeSet:
             return
         log_debug("Name = " + name)
@@ -97,13 +113,11 @@ def parseRecipePage(url):
 
         row.append(url)
 
-        try:
-            desc=soup.find_all(class_="preparation_p2")[0].get_text().replace("\"\"", "\"").strip().replace("\r","").replace("\n\n","\n").replace("\t"," ").replace("  "," ")
-            log_debug("desc = " + desc)
-            row.append(desc)
-        except Exception as e:
-            log_error(e, "No description for " + url)
-            row.append("NULL")
+        log_debug("desc = " + desc)
+        row.append(desc)
+
+        log_debug("chef = " + chef)
+        row.append(chef)
 
         try:
             pElemArr = soup.select("div[class='col-md-6 col-lg-6 col-sm-6 col-xs-6'] p")
@@ -111,22 +125,13 @@ def parseRecipePage(url):
                 text = pElem.get_text().strip()
                 if text.startswith("Prep time : "):
                     prepTime = text.replace("Prep time :","").strip()
-                    row.append(prepTime)
                 elif text.startswith("Cook time :"):
                     cookTime = text.replace("Cook time :","").strip()
-                    row.append(cookTime)
                 elif text.startswith("Total time :"):
                     totalTime = text.replace("Total time :","").strip()
-                    row.append(totalTime)
-                elif text.startswith("Author :"):
-                    chef=text.replace("Author :","").strip()
-                    row.append(chef)
         except Exception as e:
             log_error(e, "Error getting prepTime, cookTime, totalTime, chef for " + url)
 
-        if chef:
-            row.append(chef)
-            log_debug("chef = " + chef)
         if prepTime:
             row.append(prepTime)
             log_debug("prepTime = " + prepTime)
@@ -156,77 +161,56 @@ def parseRecipePage(url):
                             tmplist=list()
                             tmplist.append(ingrCounter) # maintain a list to add to the next row in the ingredients csv file
                             tmplist.append(ingr)
-                            #csvwriter2.writerow(tmplist) # write to the next row in the ingredients csv file
+                            csvwriter2.writerow(tmplist) # write to the next row in the ingredients csv file
                         ingredients.append(ingrDict[ingr]) # maintain a list to add comma separated values to the recipe's "ingredients" column
-                        log_debug("Mapping is : " + ingr + ", " + ingrDict[ingr])
+                        log_debug("Mapping is : " + ingr + ", " + str(ingrDict[ingr]))
             except Exception as e:
                 log_error(e, "Error trying to parse ingredient: " + ingr)
         ingredientsString = ', '.join(str(x) for x in ingredients)
         log_debug("ingredients = " + ingredientsString)
         row.append(ingredientsString)
-        
-        instructions=soup.select("script[type='application/ld+json']")[0].get_text()
-        data=json.loads(json_text)
+
         log_debug("instructions = " + instructions)
         row.append(instructions)
 
-        try:
-            rating=5 - len(soup.select("[class='glyphicon glyphicon-star-empty']"))
-            log_debug("rating = " + rating)
-            row.append(rating)
-        except Exception as e:
-            log_error(e, "No rating for " + url)
-            row.append("NULL")
+        log_debug("rating = " + str(rating))
+        row.append(rating)
 
-        try:             
-            num_of_reviews=soup.find("span", id="liveratng").get_text().strip()
-            log_debug("num_of_reviews = " + num_of_reviews)
-            row.append(num_of_reviews)
-        except Exception as e:
-            log_error(e, "No num_of_reviews for " + url)
-            row.append("NULL")
+        log_debug("num_of_reviews = " + str(num_of_reviews))
+        row.append(num_of_reviews)
 
-        try:  
-            calories=soup.select("[class='glyphicon glyphicon-stats']").get_text().strip().replace(" Cals", "")
-            log_debug("calories = " + calories)
-            row.append(calories)
-        except Exception as e:
-            log_error(e, "No calories for " + url)
-            row.append("NULL")
+        log_debug("calories = " + str(calories))
+        row.append(calories)
 
-        try:
-            servings=soup.select("[class='glyphicon glyphicon-star-empty']").get_text().strip()
-            log_debug("servings = " + servings)
-            row.append(servings)
-        except Exception as e:
-            log_error(e, "No servings for " + url)
-            row.append("NULL")
+        log_debug("servings = " + str(servings))
+        row.append(servings)
 
-        fatContent="NULL"
+        log_debug("fatContent = " + str(fatContent))
         row.append(fatContent)
 
-        carbohydrateContent="NULL"
-        row.append(carbohydrateContent)
+        row.append("NULL")
 
-        proteinContent="NULL"
+        log_debug("proteinContent = " + str(proteinContent))
         row.append(proteinContent)
 
-        cholesterolContent="NULL"
+        log_debug("cholesterolContent = " + str(cholesterolContent))
         row.append(cholesterolContent)
 
-        sodiumContent="NULL"
+        log_debug("sodiumContent = " + str(sodiumContent))
         row.append(sodiumContent)
+
+        log_debug("image = " + image)
+        row.append(image)
             
     except Exception as e:
         log_error(e, "parseRecipePage: " + url)
     global csvwriter
 
     try:
-        #csvwriter.writerow(row)
-        print(row)
+        csvwriter.writerow(row)
         print("Successfully added recipe for " + name)
     except Exception as e:
-        log_error(e, "Error while trying to write "+ row + " to file")
+        log_error(e, "Error while trying to write "+ str(row) + " to file")
 
 def cleanup():
     global datafile
