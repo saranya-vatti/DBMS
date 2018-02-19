@@ -143,7 +143,7 @@ def parseRecipePage(url):
             log_error(e, "No totalTime for " + url)
             row.append("NULL")
 
-        ingrElemArr=soup.find_all(class_="recipe-ingred_txt")
+        ingrElemArr=soup.select("span[itemprop='ingredients']")
         global ingrCounter
         global csvwriter2
         global ingrDict
@@ -152,14 +152,15 @@ def parseRecipePage(url):
             try:
                 ingr=ingrElem.get_text().strip()
                 if "Add all ingredients to list" not in ingr:
-                    if ingr and ingr not in ingrDict:
-                        tmplist=list()
-                        ingrCounter+=1
-                        ingrDict.update({ingr:ingrCounter}) # maintain a dict to make sure ingr are unique across multiple recipes
-                        ingredients.append(ingrDict[ingr]) # maintain a list to add comma deparated values to the recipe's "ingredients" column
-                        tmplist.append(ingrCounter) # maintain a list to add to the next row in the ingredients csv file
-                        tmplist.append(ingr)
-                        csvwriter2.writerow(tmplist)
+                    if ingr:
+                        if ingr not in ingrDict:
+                            ingrCounter+=1
+                            ingrDict.update({ingr:ingrCounter}) # maintain a dict to make sure ingr are unique across multiple recipes
+                            tmplist=list()
+                            tmplist.append(ingrCounter) # maintain a list to add to the next row in the ingredients csv file
+                            tmplist.append(ingr)
+                            csvwriter2.writerow(tmplist) # write to the next row in the ingredients csv file
+                        ingredients.append(ingrDict[ingr]) # maintain a list to add comma separated values to the recipe's "ingredients" column
             except Exception as e:
                 log_error(e, "Error trying to parse ingredient: " + ingr)
         row.append(', '.join(str(x) for x in ingredients))
