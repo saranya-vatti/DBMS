@@ -12,8 +12,11 @@ import urllib
 import shutil
 import csv
 
-datafile = "G:\\Courses\\Spring 18\DBMS\\Assignments\\data_vahrehvah.csv"
-
+datafilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\data_vahrehvah.csv"
+ingredientfilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\ingr.csv"
+sitemapurl="https://www.vahrehvah.com/allrecipes"
+ingrDict=dict()
+recipeSet=set()
 LOG_LEVELS = {
     "DEBUG" : 100,
     "INFO" : 200,
@@ -34,6 +37,49 @@ def log_info(string):
 def log_debug(string):
     if(LOGLVL <= LOG_LEVELS["DEBUG"]):
         print(string)
+
+try:
+    datafile=open(datafilename)
+    csvreader = csv.DictReader(datafile)
+    for r in csvreader:
+        recipeSet.add(r["name"])
+    datafile.close()
+except Exception as e:
+    log_error(e, "Error in reading datafile")
+
+try:
+    ingredientfile=open(ingredientfilename)
+    csvreader1 = csv.DictReader(ingredientfile)
+    for r in csvreader1:
+        ingrDict[r["name"]] = r["id"]
+        ingrCounter=int(r["id"])
+    ingredientfile.close()
+except Exception as e:
+    log_error(e, "Error in reading ingredientfile")
+
+try:
+    datafile=open(datafilename, 'a', newline='')
+    csvwriter = csv.writer(datafile)
+except Exception as e:
+    log_error(e, "Error in creating datafile")
+
+try:
+    ingredientfile=open(ingredientfilename, 'a', newline='')
+    csvwriter2 = csv.writer(ingredientfile)
+except Exception as e:
+    log_error(e, "Error in creating ingredientfile")
+
+def main():
+    req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
+    response = urllib2.urlopen(req)
+    soup = BeautifulSoup(response.read(), "html.parser")
+    aArr=soup.find_all("a", href=True)
+
+    for aitem in aArr:
+        href=aitem['href']
+        if(href.startswith("https://www.vahrehvah.com/")):
+            parseRecipePage(url)
+    cleanup()
        
 def parseRecipePage(url):
     row=list()
@@ -41,64 +87,151 @@ def parseRecipePage(url):
         req = urllib2.Request(url, headers={"User-Agent" : "Magic Browser"})
         response = urllib2.urlopen(req)
         soup = BeautifulSoup(response.read(), "html.parser")
+        
         name=soup.select("h3[class='non-printable']")[0].get_text()
+        if name in recipeSet:
+            return
         row.append(name)
-        desc=soup.find_all(class_="preparation_p2")[0].get_text()
-        row.append(desc.replace("\"\"", "\"").strip())
+
+        row.append(url)
+
+        try:
+            desc=soup.find_all(class_="preparation_p2")[0].get_text()
+            row.append(desc.replace("\"\"", "\"").strip())
+        except Exception as e:
+            log_error(e, "No description for " + url)
+            row.append("NULL")
+
         chef="Vahchef"
         row.append(chef)
-        prepTime=soup.select("td")[2].get_text().strip().replace("Prep time","")
-        row.append(prepTime)
-        cookTime=soup.select("td")[3].get_text().strip().replace("Cook time","")
-        row.append(cookTime)
-        total=soup.select("td")[4].get_text().strip().replace("Total time","")
-        row.append(total)
+
+        try:
+            prepTime=soup.select("td")[2].get_text().strip().replace("Prep time","")
+            row.append(prepTime)
+        except Exception as e:
+            log_error(e, "No prepTime for " + url)
+            row.append("NULL")
+
+        try:
+            cookTime=soup.select("td")[3].get_text().strip().replace("Cook time","")
+            row.append(cookTime)
+        except Exception as e:
+            log_error(e, "No cookTime for " + url)
+            row.append("NULL")
+
+        try:    
+            total=soup.select("td")[4].get_text().strip().replace("Total time","")
+            row.append(totalTime)
+        except Exception as e:
+            log_error(e, "No totalTime for " + url)
+            row.append("NULL")
+
+        ingrElemArr=soup.select("span[itemprop='ingredients']")
+        global ingrCounter
+        global csvwriter2
+        global ingrDict
+        ingredients=list()
+        for ingrElem in ingrElemArr:
+            try:
+                ingr=ingrElem.get_text().strip()
+                if "Add all ingredients to list" not in ingr:
+                    if ingr:
+                        if ingr not in ingrDict:
+                            ingrCounter+=1
+                            ingrDict.update({ingr:ingrCounter}) # maintain a dict to make sure ingr are unique across multiple recipes
+                            tmplist=list()
+                            tmplist.append(ingrCounter) # maintain a list to add to the next row in the ingredients csv file
+                            tmplist.append(ingr)
+                            csvwriter2.writerow(tmplist) # write to the next row in the ingredients csv file
+                        ingredients.append(ingrDict[ingr]) # maintain a list to add comma separated values to the recipe's "ingredients" column
+            except Exception as e:
+                log_error(e, "Error trying to parse ingredient: " + ingr)
+        row.append(', '.join(str(x) for x in ingredients))
+        
         instructions=soup.select("[itemprop='recipeInstructions']")[0].get_text().strip()
         row.append(instructions)
-        row.append(url)
-        rating=soup.select("[class='rating-stars']")[0]['data-ratingstars']
-        row.append(rating)
-        num_of_reviews=soup.find_all(class_="review-count")[0].get_text()
-        row.append(num_of_reviews.replace(" reviews", ""))
-        calories=soup.find_all(class_="calorie-count")[0].get_text()
-        row.append(calories.replace(" cals", ""))
-        ### WHY THE HELL IS THIS NOT WORKING
-        servings=soup.find_all(class_="servings-count")[0].get_text().replace(" servings", "").strip()
-        row.append(servings)
-        ### ???
-        fatContent=soup.select("span[itemprop='fatContent']")[0].get_text()
-        row.append(fatContent)
-        carbohydrateContent=soup.select("span[itemprop='carbohydrateContent']")[0].get_text()
-        row.append(carbohydrateContent)
-        proteinContent=soup.select("span[itemprop='proteinContent']")[0].get_text()
-        row.append(proteinContent)
-        cholesterolContent=soup.select("span[itemprop='cholesterolContent']")[0].get_text()
-        row.append(cholesterolContent)
-        sodiumContent=soup.select("span[itemprop='sodiumContent']")[0].get_text()
-        row.append(sodiumContent)
+
+        try:
+            rating=soup.select("[class='rating-stars']")[0]['data-ratingstars']
+            row.append(rating)
+        except Exception as e:
+            log_error(e, "No rating for " + url)
+            row.append("NULL")
+
+        try:             
+            num_of_reviews=soup.find_all(class_="review-count")[0].get_text()
+            row.append(num_of_reviews.replace(" reviews", ""))
+        except Exception as e:
+            log_error(e, "No num_of_reviews for " + url)
+            row.append("NULL")
+
+        try:  
+            calories=soup.find_all(class_="calorie-count")[0].get_text()
+            row.append(calories.replace(" cals", ""))
+        except Exception as e:
+            log_error(e, "No calories for " + url)
+            row.append("NULL")
+
+        try:
+            servings=soup.find_all(class_="subtext")[0].get_text().replace("Original recipe yields ","")
+            row.append(servings)
+        except Exception as e:
+            log_error(e, "No servings for " + url)
+            row.append("NULL")
+
+        try:
+            fatContent=soup.select("span[itemprop='fatContent']")[0].get_text()
+            row.append(fatContent)
+        except Exception as e:
+            log_error(e, "No fatContent for " + url)
+            row.append("NULL")
+
+        try:
+            carbohydrateContent=soup.select("span[itemprop='carbohydrateContent']")[0].get_text()
+            row.append(carbohydrateContent)
+        except Exception as e:
+            log_error(e, "No carbohydrateContent for " + url)
+            row.append("NULL")
+
+        try:
+            proteinContent=soup.select("span[itemprop='proteinContent']")[0].get_text()
+            row.append(proteinContent)
+        except Exception as e:
+            log_error(e, "No proteinContent for " + url)
+            row.append("NULL")
+
+        try:
+            cholesterolContent=soup.select("span[itemprop='cholesterolContent']")[0].get_text()
+            row.append(cholesterolContent)
+        except Exception as e:
+            log_error(e, "No cholesterolContent for " + url)
+            row.append("NULL")
+
+        try:
+            sodiumContent=soup.select("span[itemprop='sodiumContent']")[0].get_text()
+            row.append(sodiumContent)
+        except Exception as e:
+            log_error(e, "No sodiumContent for " + url)
+            row.append("NULL")
+            
     except Exception as e:
         log_error(e, "parseRecipePage: " + url)
-    return row
+    global csvwriter
 
-i=0
-sitemapurl="https://www.vahrehvah.com/allrecipes"
-req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
-response = urllib2.urlopen(req)
-soup = BeautifulSoup(response.read(), "html.parser")
-aArr=soup.find_all("a", href=True)
-try:
-    csvwriter = csv.writer(open(datafile, 'w'), delimiter=',')
-    csvwriter.writerow(['name','desc','chef','prepTime','cooktime','total','instructions','link','rating','num_of_reviews','calories','servings','fat','carb','protein','cholesterol','sodium'])
-except Exception as e:
-    log_error(e, "createFile")
-for aitem in aArr:
-    href=aitem['href']
-    if(href.startswith("https://www.vahrehvah.com/")):
-        try:
-            row=parseRecipePage(href)
-            csvwriter.writerow(row)
-            print("Successfully added recipe for " + row[0])
-        except Exception as e:
-            log_error(e, "Error while trying to write "+ row + " to file")
-file.close()
+    try:
+        csvwriter.writerow(row)
+        print("Successfully added recipe for " + name)
+    except Exception as e:
+        log_error(e, "Error while trying to write "+ row + " to file")
+
+def cleanup():
+    global datafile
+    global ingredientfile
+    datafile.close()
+    ingredientfile.close()
     
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        cleanup()
