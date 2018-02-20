@@ -92,34 +92,49 @@ def parseRecipePage(url):
         response = urllib2.urlopen(req)
         soup = BeautifulSoup(response.read(), "html.parser")
 
-        name=soup.select("h1[itemprop='name']")[0].get_text().replace("recipe","").strip()
-        if name in recipeSet:
+        try:
+            name=soup.select("h1[itemprop='name']")[0].get_text().replace("recipe","").strip()
+            if name in recipeSet:
+                return
+            log_debug("Name = " + name)
+            row.append(name)
+        except Exception as e:
+            log_error(e, "No name for " + url)
             return
-        log_debug("Name = " + name)
-        row.append(name)
 
         row.append(url)
 
-        desc=soup.select("div[class='entry-content'] p")[2].get_text().strip()
-        log_debug("desc = " + desc)
-        row.append(desc)
-
+        try:
+            desc=soup.select("div[class='entry-content'] p")[2].get_text().strip()
+            log_debug("desc = " + desc)
+            row.append(desc)
+        except Exception as e:
+            log_error(e, "No desc for " + url)
+        
         chef="Sailaja Gudivada"
         log_debug("chef = " + chef)
         row.append(chef)
 
+        try:
+            prepTime=soup.select("time[itemprop='prepTime']")[0].get_text().strip()
+            log_debug("prepTime = " + prepTime)
+            row.append(prepTime)
+        except Exception as e:
+            log_error(e, "No prepTime for " + url)
 
-        prepTime=soup.select("time[itemprop='prepTime']")[0].get_text().strip()
-        log_debug("prepTime = " + prepTime)
-        row.append(prepTime)
+        try:
+            cookTime=soup.select("time[itemprop='cookTime']")[0].get_text().strip()
+            log_debug("cookTime = " + cookTime)
+            row.append(cookTime)
+        except Exception as e:
+            log_error(e, "No cookTime for " + url)
 
-        cookTime=soup.select("time[itemprop='cookTime']")[0].get_text().strip()
-        log_debug("cookTime = " + cookTime)
-        row.append(cookTime)
-
-        totalTime="NULL"
-        log_debug("totalTime = " + totalTime)
-        row.append(totalTime)
+        try:
+            totalTime="NULL"
+            log_debug("totalTime = " + totalTime)
+            row.append(totalTime)
+        except Exception as e:
+            log_error(e, "No totalTime for " + url)
 
         ingrElemArr=soup.select("span[itemprop='recipeIngredient']")
         global ingrCounter
@@ -145,33 +160,56 @@ def parseRecipePage(url):
         log_debug("ingredients = " + ingredientsString)
         row.append(ingredientsString)
 
-        stepElemArr=soup.select("span[class='step']")
-        instructions=""
-        for stepElem in stepElemArr:
-            instructions=instructions+stepElem.get_text()+"\n"
-        instructions=instructions.strip()
-        log_debug("instructions = " + instructions)
-        row.append(instructions)
+        try:
+            stepElemArr=soup.select("span[class='step']")
+            instructions=""
+            for stepElem in stepElemArr:
+                instructions=instructions+stepElem.get_text()+"\n"
+            instructions=instructions.strip()
+            log_debug("instructions = " + instructions)
+            row.append(instructions)
+        except Exception as e:
+            log_error(e, "No instructions for " + url)
 
-        ratingElemArr=soup.select("div[class='rating-star-icon']")
-        rating=0
-        for ratingElem in ratingElemArr:
-            if(ratingElem['style'].contains(" top left")):
-                rating+=1
-        log_debug("rating = " + str(rating))
-        row.append(rating)
+        scriptElemArr=soup.find_all("script")
+        for scriptElem in scriptElemArr:
+            if "ratings" in scriptElem['src']:
+                req2 = urllib2.Request(scriptElem['src'], headers={"User-Agent" : "Magic Browser"})
+                response2 = urllib2.urlopen(req2)
+                soup = BeautifulSoup(response2.read(), "html.parser")
+                print(soup)
+                break
+        try:
+            ratingElemArr=soup.find_all("div", class_="rating-star-icon")
+            rating=0
+            for ratingElem in ratingElemArr:
+                print(ratingElem.get_text())
+                print(ratingElem['style'])
+                if(" top left" in ratingElem['style']):
+                    rating+=1
+            log_debug("rating = " + str(rating))
+            row.append(rating)
+        except Exception as e:
+            log_error(e, "No rating for " + url)
 
-        num_of_reviews=soup.select("div[class='rating-msg']")[0].get_text().replace("Votes","").strip()
-        log_debug("num_of_reviews = " + num_of_reviews)
-        row.append(num_of_reviews)
+        try:
+            #num_of_reviews=soup.find_all(class_='rating-msg')[0].get_text().replace("Votes","").strip()
+            num_of_reviews=soup.find_all("div", class_="rating-msg")[0].get_text().strip()
+            log_debug("num_of_reviews = " + num_of_reviews)
+            row.append(num_of_reviews)
+        except Exception as e:
+            log_error(e, "No num_of_reviews for " + url)
 
         calories="NULL"
         log_debug("calories = " + str(calories))
         row.append(calories)
 
-        servings=soup.select("span[itemprop='recipeYield']")[0].get_text().strip()
-        log_debug("servings = " + str(servings))
-        row.append(servings)
+        try:
+            servings=soup.select("span[itemprop='recipeYield']")[0].get_text().strip()
+            log_debug("servings = " + str(servings))
+            row.append(servings)
+        except Exception as e:
+            log_error(e, "No servings for " + url)
 
         fatContent="NULL"
         log_debug("fatContent = " + str(fatContent))
@@ -181,28 +219,31 @@ def parseRecipePage(url):
         log_debug("carbContent = " + str(carbContent))
         row.append("NULL")
 
-        calories="NULL"
+        proteinContent="NULL"
         log_debug("proteinContent = " + str(proteinContent))
         row.append(proteinContent)
 
-        calories="NULL"
+        cholesterolContent="NULL"
         log_debug("cholesterolContent = " + str(cholesterolContent))
         row.append(cholesterolContent)
 
-        calories="NULL"
+        sodiumContent="NULL"
         log_debug("sodiumContent = " + str(sodiumContent))
         row.append(sodiumContent)
 
-        image=soup.select("div[align='center'] a")[0]['href']
-        log_debug("image = " + image)
-        row.append(image)
+        try:
+            image=soup.select("div[align='center'] a")[0]['href']
+            log_debug("image = " + image)
+            row.append(image)
+        except Exception as e:
+            log_error(e, "No image for " + url)
             
     except Exception as e:
         log_error(e, "parseRecipePage: " + url)
     global csvwriter
 
     try:
-        csvwriter.writerow(row)
+        #csvwriter.writerow(row)
         print("Successfully added recipe for " + name)
     except Exception as e:
         log_error(e, "Error while trying to write "+ str(row) + " to file")
