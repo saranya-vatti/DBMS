@@ -12,7 +12,7 @@ import urllib
 import shutil
 import csv
 
-datafilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\data_sailusfoos.csv"
+datafilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\data_sailusfood.csv"
 ingredientfilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\ingr.csv"
 sitemapurl="http://www.sailusfood.com/categories/all_recipes_blogged_to_date/page/"
 ingrDict=dict()
@@ -23,7 +23,7 @@ LOG_LEVELS = {
     "ERROR" : 300,
     "NONE" : 400
 }
-LOGLVL=LOG_LEVELS["ERROR"]
+LOGLVL=LOG_LEVELS["DEBUG"]
 
 def log_error(exception, location):
     if(LOGLVL <= LOG_LEVELS["ERROR"]):
@@ -121,7 +121,7 @@ def parseRecipePage(url):
         log_debug("totalTime = " + totalTime)
         row.append(totalTime)
 
-        ingrElemArr=soup.select("span[itemprop='recipeIngredient'")
+        ingrElemArr=soup.select("span[itemprop='recipeIngredient']")
         global ingrCounter
         global csvwriter2
         global ingrDict
@@ -145,15 +145,15 @@ def parseRecipePage(url):
         log_debug("ingredients = " + ingredientsString)
         row.append(ingredientsString)
 
-        stepElemArr=soup.select("span[class='step'")
+        stepElemArr=soup.select("span[class='step']")
         instructions=""
         for stepElem in stepElemArr:
-            instructions=instructions+stepElem.text()+"\n"
+            instructions=instructions+stepElem.get_text()+"\n"
         instructions=instructions.strip()
         log_debug("instructions = " + instructions)
         row.append(instructions)
 
-        ratingElemArr=soup.select("div[class='rating-star-icon'")
+        ratingElemArr=soup.select("div[class='rating-star-icon']")
         rating=0
         for ratingElem in ratingElemArr:
             if(ratingElem['style'].contains(" top left")):
@@ -161,7 +161,7 @@ def parseRecipePage(url):
         log_debug("rating = " + str(rating))
         row.append(rating)
 
-        num_of_reviews=soup.select("div[class='rating-msg'")[0].get_text().replace("Votes","").strip()
+        num_of_reviews=soup.select("div[class='rating-msg']")[0].get_text().replace("Votes","").strip()
         log_debug("num_of_reviews = " + num_of_reviews)
         row.append(num_of_reviews)
 
