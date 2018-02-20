@@ -174,6 +174,7 @@ def parseRecipePage(url):
         scriptElemArr=soup.find_all("script")
         for scriptElem in scriptElemArr:
             if "ratings" in scriptElem['src']:
+                print(scriptElem['src'])
                 req2 = urllib2.Request(scriptElem['src'], headers={"User-Agent" : "Magic Browser"})
                 response2 = urllib2.urlopen(req2)
                 soup = BeautifulSoup(response2.read(), "html.parser")
