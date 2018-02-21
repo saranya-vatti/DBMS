@@ -27,8 +27,7 @@ LOGLVL=LOG_LEVELS["DEBUG"]
 
 def log_error(exception, location):
     if(LOGLVL <= LOG_LEVELS["ERROR"]):
-        print("Exception encountered : " + str(type(exception)) + " in " + location)
-        print("Exception : " + str(exception))
+        print("Exception : " + str(exception) + " in " + location)
 
 def log_info(string):
     if(LOGLVL <= LOG_LEVELS["INFO"]):
