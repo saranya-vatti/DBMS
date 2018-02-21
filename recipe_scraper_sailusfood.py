@@ -70,10 +70,8 @@ except Exception as e:
     log_error(e, "Error in creating ingredientfile")
 
 def main():
-    '''
-    for pagenum in 1..44:
-        sitemapurl + pagenum + "/"
-        req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
+    for pagenum in range(1,44):
+        req = urllib2.Request(sitemapurl + str(pagenum) + "/", headers={"User-Agent" : "Magic Browser"})
         response = urllib2.urlopen(req)
         soup = BeautifulSoup(response.read(), "html.parser")
         aArr=soup.find(class_="entry-title").find_all("a", href=True)
@@ -81,8 +79,6 @@ def main():
         for aitem in aArr:
             href=aitem['href']
             parseRecipePage(href)
-    '''
-    parseRecipePage("http://www.sailusfood.com/lachha-paratha-recipe/")
     cleanup()
        
 def parseRecipePage(url):
@@ -143,7 +139,7 @@ def parseRecipePage(url):
         ingredients=list()
         for ingrElem in ingrElemArr:
             try:
-                ingr=ingrElem.get_text()
+                ingr=ingrElem.get_text().strip()
                 if ingr:
                     if ingr not in ingrDict:
                         ingrCounter+=1
@@ -171,35 +167,13 @@ def parseRecipePage(url):
         except Exception as e:
             log_error(e, "No instructions for " + url)
 
-        scriptElemArr=soup.find_all("script")
-        for scriptElem in scriptElemArr:
-            if "ratings" in scriptElem['src']:
-                print(scriptElem['src'])
-                req2 = urllib2.Request(scriptElem['src'], headers={"User-Agent" : "Magic Browser"})
-                response2 = urllib2.urlopen(req2)
-                soup = BeautifulSoup(response2.read(), "html.parser")
-                print(soup)
-                break
-        try:
-            ratingElemArr=soup.find_all("div", class_="rating-star-icon")
-            rating=0
-            for ratingElem in ratingElemArr:
-                print(ratingElem.get_text())
-                print(ratingElem['style'])
-                if(" top left" in ratingElem['style']):
-                    rating+=1
-            log_debug("rating = " + str(rating))
-            row.append(rating)
-        except Exception as e:
-            log_error(e, "No rating for " + url)
+        rating="NULL"
+        log_debug("rating = " + str(rating))
+        row.append(rating)
 
-        try:
-            #num_of_reviews=soup.find_all(class_='rating-msg')[0].get_text().replace("Votes","").strip()
-            num_of_reviews=soup.find_all("div", class_="rating-msg")[0].get_text().strip()
-            log_debug("num_of_reviews = " + num_of_reviews)
-            row.append(num_of_reviews)
-        except Exception as e:
-            log_error(e, "No num_of_reviews for " + url)
+        num_of_reviews="NULL"
+        log_debug("num_of_reviews = " + num_of_reviews)
+        row.append(num_of_reviews)
 
         calories="NULL"
         log_debug("calories = " + str(calories))
@@ -244,7 +218,7 @@ def parseRecipePage(url):
     global csvwriter
 
     try:
-        #csvwriter.writerow(row)
+        csvwriter.writerow(row)
         print("Successfully added recipe for " + name)
     except Exception as e:
         log_error(e, "Error while trying to write "+ str(row) + " to file")
