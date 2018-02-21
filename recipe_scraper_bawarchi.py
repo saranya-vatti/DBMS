@@ -23,7 +23,7 @@ LOG_LEVELS = {
     "ERROR" : 300,
     "NONE" : 400
 }
-LOGLVL=LOG_LEVELS["DEBUG"]
+LOGLVL=LOG_LEVELS["ERROR"]
 
 def log_error(exception, location):
     if(LOGLVL <= LOG_LEVELS["ERROR"]):
@@ -77,17 +77,16 @@ def main():
             req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
             response = urllib2.urlopen(req)
             soup = BeautifulSoup(response.read(), "html.parser")
-            nextArr=soup.find_all(class_="respglink")
-            nexthref=""
             aArr=soup.select("div[itemprop='Recipe'] a")
+            recipe_set=set()
             for aElem in aArr:
                 href=aElem['href']
                 if href not in recipeUrlSet:
                         recipe_set.add(href)
-                for url in recipe_set:
-                    parseRecipePage(url)
         except Exception as e:
-            log_error(e, "No recipes under " + chr(ord('A') + index))
+            log_error(e, "No recipes under " + str(index))
+    for url in recipe_set:
+        parseRecipePage(url)
     cleanup()
        
 def parseRecipePage(url):
@@ -105,11 +104,11 @@ def parseRecipePage(url):
         row.append(url)
 
         try:
-            desc=soup.select("meta[itemprop='description']")[0]['content'].replace("\"\"", "\"").strip()
+            desc=soup.select("meta[name='description']")[0]['content'].replace("\"\"", "\"").replace("Find the complete instructions on Bawarchi.com","").strip()
             log_debug("desc = " + desc)
             row.append(desc)
         except Exception as e:
-            log_error(e, "No description for " + url)
+            log_info("No description for " + name)
             row.append("NULL")
 
         try:
@@ -117,7 +116,7 @@ def parseRecipePage(url):
             log_debug("chef = " + chef)
             row.append(chef)
         except Exception as e:
-            log_error(e, "No chef name found for " + url)
+            log_info("No chef name found for " + name)
             row.append("NULL")
 
         try:
@@ -125,7 +124,7 @@ def parseRecipePage(url):
             log_debug("prepTime = " + prepTime)
             row.append(prepTime)
         except Exception as e:
-            log_error(e, "No prepTime for " + url)
+            log_info("No prepTime for " + name)
             row.append("NULL")
 
         try:
@@ -133,23 +132,24 @@ def parseRecipePage(url):
             log_debug("cookTime = " + cookTime)
             row.append(cookTime)
         except Exception as e:
-            log_error(e, "No cookTime for " + url)
+            log_info("No cookTime for " + name)
             row.append("NULL")
 
         try:    
-            totalTime=soup.select("time[itemprop='totalTime']")[0].get_text()
+            totalTime=soup.select("div[class='col-md-3 col-sm-4']")[0].get_text().replace("Total Time:","").strip()
             log_debug("totalTime = " + totalTime)
             row.append(totalTime)
         except Exception as e:
-            log_error(e, "No totalTime for " + url)
+            log_info("No totalTime for " + name)
             row.append("NULL")
 
-        ingrArr=soup.select("meta[itemprop='ingredients']")[0]['content'].split(" , ")
+        ingrElemArr=soup.select("li[itemprop='ingredients']")
         global ingrCounter
         global csvwriter2
         global ingrDict
         ingredients=list()
-        for ingr in ingrArr:
+        for ingrElem in ingrElemArr:
+            ingr=ingrElem.get_text().strip()
             try:
                 if ingr not in ingrDict:
                     ingrCounter+=1
@@ -166,14 +166,14 @@ def parseRecipePage(url):
         row.append(ingrStr)
 
         try:
-            instrArr=soup.select("meta[itemprop='recipeInstructions']")[0]['content'].spit(". , ")
+            instrArr=soup.select("meta[itemprop='recipeInstructions']")[0]['content'].split("., ")
             instructions=""
             for instr in instrArr:
-                instructions=instructions+instr.get_text().strip() + "\n"
+                instructions=instructions+instr.strip() + "\n"
             log_debug("instructions = " + instructions)
             row.append(instructions.strip())
         except Exception as e:
-            log_error(e, "No instructions for " + url)
+            log_error(e, "No instructions for " + name)
             row.append("NULL")
 
         try:
@@ -181,7 +181,7 @@ def parseRecipePage(url):
             log_debug("rating = " + rating)
             row.append(rating)
         except Exception as e:
-            log_error(e, "No rating for " + url)
+            log_info("No rating for " + name)
             row.append("NULL")
 
         try:
@@ -189,7 +189,7 @@ def parseRecipePage(url):
             log_debug("num_of_reviews = " + num_of_reviews)
             row.append(num_of_reviews)
         except Exception as e:
-            log_error(e, "No num_of_reviews for " + url)
+            log_info("No num_of_reviews for " + name)
             row.append("NULL")
 
         try:  
@@ -197,7 +197,7 @@ def parseRecipePage(url):
             log_debug("calories = " + calories)
             row.append(calories)
         except Exception as e:
-            log_error(e, "No calories for " + url)
+            log_info("No calories for " + name)
             row.append("NULL")
 
         try:
@@ -205,7 +205,7 @@ def parseRecipePage(url):
             log_debug("servings = " + servings)
             row.append(servings)
         except Exception as e:
-            log_error(e, "No servings for " + url)
+            log_info("No servings for " + name)
             row.append("NULL")
 
         try:
@@ -213,7 +213,7 @@ def parseRecipePage(url):
             log_debug("fatContent = " + fatContent)
             row.append(fatContent)
         except Exception as e:
-            log_error(e, "No fatContent for " + url)
+            log_info("No fatContent for " + name)
             row.append("NULL")
 
         try:
@@ -221,7 +221,7 @@ def parseRecipePage(url):
             log_debug("carbohydrateContent = " + carbohydrateContent)
             row.append(carbohydrateContent)
         except Exception as e:
-            log_error(e, "No carbohydrateContent for " + url)
+            log_info("No carbohydrateContent for " + name)
             row.append("NULL")
 
         try:
@@ -229,7 +229,7 @@ def parseRecipePage(url):
             log_debug("proteinContent = " + proteinContent)
             row.append(proteinContent)
         except Exception as e:
-            log_error(e, "No proteinContent for " + url)
+            log_info("No proteinContent for " + name)
             row.append("NULL")
 
         try:
@@ -237,7 +237,7 @@ def parseRecipePage(url):
             log_debug("cholesterolContent = " + cholesterolContent)
             row.append(cholesterolContent)
         except Exception as e:
-            log_error(e, "No cholesterolContent for " + url)
+            log_info("No cholesterolContent for " + name)
             row.append("NULL")
 
         try:
@@ -245,7 +245,7 @@ def parseRecipePage(url):
             log_debug("sodiumContent = " + sodiumContent)
             row.append(sodiumContent)
         except Exception as e:
-            log_error(e, "No sodiumContent for " + url)
+            log_info("No sodiumContent for " + name)
             row.append("NULL")
 
         try:
@@ -253,15 +253,15 @@ def parseRecipePage(url):
             log_debug("image = " + image)
             row.append(image)
         except Exception as e:
-            log_error(e, "No image for " + url)
+            log_info("No image for " + name)
             row.append("NULL")
 
         try:
-            keywords=soup.select("meta[property='keywords']")[0]['content']
+            keywords=soup.select("meta[name='keywords']")[0]['content']
             log_debug("keywords = " + keywords)
             row.append(keywords)
         except Exception as e:
-            log_error(e, "No image for " + url)
+            log_info("No keywords for " + name)
             row.append("NULL")
             
     except Exception as e:

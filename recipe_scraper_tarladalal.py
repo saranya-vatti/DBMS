@@ -71,7 +71,7 @@ except Exception as e:
     log_error(e, "Error in creating ingredientfile")
 
 def main():
-    for index in range(0, 25):
+    for index in range(25, 26):
         try:
             currChar = chr(ord('A') + index)
             sitemapurl="https://www.tarladalal.com/RecipeAtoZ.aspx?beginswith=" + currChar + "&pageindex=1"
