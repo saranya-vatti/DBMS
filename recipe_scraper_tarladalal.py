@@ -12,7 +12,7 @@ import urllib
 import shutil
 import csv
 
-datafilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\data.csv"
+datafilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\data_tarladalal.csv"
 ingredientfilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\ingr.csv"
 ingrDict=dict()
 recipeSet=set()
@@ -109,7 +109,7 @@ def parseRecipePage(url):
         response = urllib2.urlopen(req)
         soup = BeautifulSoup(response.read(), "html.parser")
         
-        name=soup.select("span[itemprop='name']")[0].get_text()
+        name=soup.select("span[id='ctl00_cntrightpanel_lblRecipeName']")[0].get_text()
         if name in recipeSet:
             return
         row.append(name)
@@ -142,7 +142,7 @@ def parseRecipePage(url):
 
         try:
             cookTime=soup.select("time[itemprop='cookTime']")[0].get_text()
-            log_debug("prepTime = " + prepTime)
+            log_debug("cookTime = " + cookTime)
             row.append(cookTime)
         except Exception as e:
             log_error(e, "No cookTime for " + url)
@@ -150,7 +150,7 @@ def parseRecipePage(url):
 
         try:    
             totalTime=soup.select("time[itemprop='totalTime']")[0].get_text()
-            log_debug("prepTime = " + prepTime)
+            log_debug("totalTime = " + totalTime)
             row.append(totalTime)
         except Exception as e:
             log_error(e, "No totalTime for " + url)
@@ -183,7 +183,7 @@ def parseRecipePage(url):
             instrLiArr=soup.select("ol[id='rcpprocsteps'] li")
             instructions=""
             for instr in instrLiArr:
-                instructions=instr.get_text().strip() + "\n"
+                instructions=instructions+instr.get_text().strip() + "\n"
             log_debug("instructions = " + instructions)
             row.append(instructions.strip())
         except Exception as e:
