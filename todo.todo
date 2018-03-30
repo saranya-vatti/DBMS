@@ -1,0 +1,34 @@
+1. Data
+If we have data from a lot of sources, stop.
+Make sure to collect all the data from all the sources in proposal. 
+700,000 tuples of all data is enough
+
+2. Database schema
+Phase 3 - exactly same, no change
+
+3. Inserted data into database?
+
+4. one or two more days for data collection and insertion
+
+5. Programming language or framework?
+Ruby/spring-hibernate
+Creating prototypes for both and understanding challenges
+One or two days to figure out the framework. Decide as early as possible. Have pros and cons.
+
+6. Bootstrap UI
+
+7. Wireframes
+
+8. How would you divide tasks?
+Front end, back end, database
+
+9. Timeline
+
+10. How to collaborate on oracle cise?
+
+11. Cise account - server on thunder.
+
+12. Prashant write a mail to professor for the shared db and server
+
+13. UI requirements, responsiveness, security - everything proposed in document; relative to other groups.
+take care of authentications
