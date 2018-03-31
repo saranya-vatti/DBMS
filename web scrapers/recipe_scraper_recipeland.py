@@ -13,7 +13,7 @@ import shutil
 import csv
 import math
 
-datafilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\data_recipeland.csv"
+datafilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\data_recipeland2.csv"
 ingredientfilename = "G:\\Courses\\Spring 18\\DBMS\\dbms-repo\\DBMS\\data\\ingr.csv"
 ingrDict=dict()
 recipeUrlSet=set()
@@ -101,9 +101,8 @@ def main():
                     href3 = aElem2['href']
                     if href3.startswith("https://recipeland.com/recipe") and href3 not in recipeUrlSet:
                         recipeUrlSet.add(href3)
-    for url in recipeUrlSet:
-        parseRecipePage(url)
-        cleanup()
+                        parseRecipePage(href3)
+    cleanup()
        
 def parseRecipePage(url):
     row=list()
@@ -318,7 +317,7 @@ def parseRecipePage(url):
 
     try:
         csvwriter.writerow(row)
-        log_info("Successfully added recipe for " + name)
+        print("Successfully added recipe for " + name)
     except Exception as e:
         log_error(e, "Error while trying to write "+ str(row) + " to file")
 
