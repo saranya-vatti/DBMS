@@ -73,35 +73,17 @@ except Exception as e:
 tag=""
 recipeListUrlSet=set()
 def main():
-    sitemapurl="https://recipeland.com/recipes/categories/browse"
-    req = urllib2.Request(sitemapurl, headers={"User-Agent" : "Magic Browser"})
-    response = urllib2.urlopen(req)
-    soup = BeautifulSoup(response.read(), "html.parser")
-    aArr=soup.select("div[id='yield']")[0].find_all("div", recursive=False)[5].find_all("a")
-    for aElem in aArr:
-        href=aElem['href']
-        tag=aElem.contents[0]
-        if href not in recipeListUrlSet and href.startswith("https://recipeland.com/recipes/for/"):
-            recipeListUrlSet.add(href)
-            req2 = urllib2.Request(href, headers={"User-Agent" : "Magic Browser"})
-            response2 = urllib2.urlopen(req2)
-            soup2 = BeautifulSoup(response2.read(), "html.parser")
-            showing = soup2.select("p[class='c tiny']")[0].get_text()
-            digArr = re.findall(r'\d+', showing)
-            firstPage = digArr[1]
-            total = digArr[2]
-            numPages = math.ceil((int(total)/int(firstPage)))
-            for pageNum in range (1,numPages):
-                href2 = href + "?page=" + str(pageNum)
-                req3 = urllib2.Request(href2, headers={"User-Agent" : "Magic Browser"})
-                response3 = urllib2.urlopen(req3)
-                soup3 = BeautifulSoup(response3.read(), "html.parser")
-                aArr2 = soup3.select(".recipe_list a")
-                for aElem2 in aArr2:
-                    href3 = aElem2['href']
-                    if href3.startswith("https://recipeland.com/recipe") and href3 not in recipeUrlSet:
-                        recipeUrlSet.add(href3)
-                        parseRecipePage(href3)
+    sitemapurl="https://recipeland.com/recipes/list?page="
+    for pageNum in range (1,3423):
+        req = urllib2.Request(sitemapurl+str(pageNum), headers={"User-Agent" : "Magic Browser"})
+        response = urllib2.urlopen(req)
+        soup = BeautifulSoup(response.read(), "html.parser")
+        aArr = soup.select(".recipe_list a")
+        for aElem in aArr:
+            href = aElem['href']
+            if href.startswith("https://recipeland.com/recipe") and href not in recipeUrlSet:
+                recipeUrlSet.add(href)
+                parseRecipePage(href)
     cleanup()
        
 def parseRecipePage(url):
